@@ -83,6 +83,7 @@ FD_EXTENSION_SUBDIR(rt_randomize    "Randomly choose one of the highest scored h
 FD_EXTENSION_SUBDIR(rt_redirect     "Handling of Diameter Redirect messages" 			ON)
 FD_EXTENSION_SUBDIR(rt_rewrite      "Convert/remove AVP data in messages" 			ON)
 FD_EXTENSION_SUBDIR(rt_pyform       "Transform AVP data using external python script" 			ON)
+FD_EXTENSION_SUBDIR(python_dra       "Transform AVP data and peer score using external python script" 			ON)
 
 
 ####
