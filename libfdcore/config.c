@@ -66,6 +66,7 @@ int fd_conf_init()
 	fd_g_config->cnf_qin_limit = 20;
 	fd_g_config->cnf_qout_limit = 30;
 	fd_g_config->cnf_qlocal_limit = 25;
+	fd_list_init(&fd_g_config->cer_host_ip_whitelist, NULL);
 	fd_list_init(&fd_g_config->cnf_endpoints, NULL);
 	fd_list_init(&fd_g_config->cnf_apps, NULL);
 	#ifdef DISABLE_SCTP

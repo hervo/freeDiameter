@@ -184,6 +184,8 @@ struct fd_config {
 	uint32_t	 cnf_orstateid;	/* The value to use in Origin-State-Id, default to random value */
 	struct dictionary *cnf_dict;	/* pointer to the global dictionary */
 	struct fifo	  *cnf_main_ev;	/* events for the daemon's main (struct fd_event items) */
+
+	struct fd_list cer_host_ip_whitelist;	/* only include Host-IP-Address AVPs that have the following endpoints in CER */
 };
 extern struct fd_config *fd_g_config; /* The pointer to access the global configuration, initalized in main */
 

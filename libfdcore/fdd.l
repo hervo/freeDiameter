@@ -260,6 +260,7 @@ nomatch:
 (?i:"OutgoingQueueLimit")	{ return QOUTLIMIT; }
 (?i:"LocalQueueLimit")	{ return QLOCALLIMIT; }
 (?i:"ListenOn")		{ return LISTENON; }
+(?i:"CerHostIpWhitelist")		{ return CERHOSTIPWHITELIST; }
 (?i:"ThreadsPerServer")	{ return THRPERSRV; }
 (?i:"ProcessingPeersPattern")	{ return PROCESSINGPEERSPATTERN; }
 (?i:"ProcessingPeersMinimum")	{ return PROCESSINGPEERSMINIMUM; }

@@ -78,6 +78,13 @@
 #ListenOn = "2001:200:903:2::202:1";
 #ListenOn = "fe80::21c:5ff:fe98:7d62%eth0";
 
+# Specify which addresses are included in CER Host-IP-Address
+# AVPs. The default behaviour includes all addresses available.
+# If we wanted to only include addresses "1.1.1.1", "2.2.2.2"
+# but NOT "3.3.3.3" then we would include the following into
+# the conf file:
+#CerHostIpWhitelist = "1.1.1.1"
+#CerHostIpWhitelist = "2.2.2.2"
 
 ##############################################################
 ##  Server configuration

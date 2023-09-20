@@ -113,6 +113,7 @@ struct peer_info fddpi;
 %token		QOUTLIMIT
 %token		QLOCALLIMIT
 %token		LISTENON
+%token		CERHOSTIPWHITELIST
 %token		THRPERSRV
 %token		PROCESSINGPEERSPATTERN
 %token		PROCESSINGPEERSMINIMUM
@@ -147,6 +148,7 @@ conffile:		/* Empty is OK -- for simplicity here, we reject in daemon later */
 			| conffile sec3436
 			| conffile sctpstreams
 			| conffile listenon
+			| conffile cerhostipwhitelist
 			| conffile thrpersrv
 			| conffile processingpeerspattern
 			| conffile processingpeersminimum
@@ -253,6 +255,21 @@ listenon:		LISTENON '=' QSTRING ';'
 				ret = getaddrinfo($3, NULL, &hints, &ai);
 				if (ret) { yyerror (&yylloc, conf, gai_strerror(ret)); YYERROR; }
 				CHECK_FCT_DO( fd_ep_add_merge( &conf->cnf_endpoints, ai->ai_addr, ai->ai_addrlen, EP_FL_CONF ), YYERROR );
+				freeaddrinfo(ai);
+				free($3);
+			}
+			;
+
+cerhostipwhitelist:		CERHOSTIPWHITELIST '=' QSTRING ';'
+			{
+				struct addrinfo hints, *ai;
+				int ret;
+				
+				memset(&hints, 0, sizeof(hints));
+				hints.ai_flags = AI_PASSIVE | AI_NUMERICHOST;
+				ret = getaddrinfo($3, NULL, &hints, &ai);
+				if (ret) { yyerror (&yylloc, conf, gai_strerror(ret)); YYERROR; }
+				CHECK_FCT_DO( fd_ep_add_merge( &conf->cer_host_ip_whitelist, ai->ai_addr, ai->ai_addrlen, EP_FL_CONF ), YYERROR );
 				freeaddrinfo(ai);
 				free($3);
 			}
