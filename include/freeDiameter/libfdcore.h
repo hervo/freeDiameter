@@ -298,6 +298,7 @@ struct peer_info {
 		int		pic_twtimer; 	/* use this value for TwTimer instead of global, if != 0 */
 		
 		char *		pic_priority;	/* Priority string for GnuTLS if we don't use the default */
+		int cnf_peer_type_server; /* If peer is a server we don't send a CER */
 		
 	} config;	/* Configured data (static for this peer entry) */
 	

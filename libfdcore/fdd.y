@@ -123,6 +123,7 @@ struct peer_info fddpi;
 %token		LOADEXT
 %token		CONNPEER
 %token		CONNTO
+%token		PEERTYPE
 %token		TLS_CRED
 %token		TLS_CA
 %token		TLS_CRL
@@ -632,6 +633,16 @@ peerparams:		/* empty */
 				CHECK_FCT_DO( fd_ep_add_merge( &fddpi.pi_endpoints, ai->ai_addr, ai->ai_addrlen, EP_FL_CONF | (disc ?: EP_ACCEPTALL) ), YYERROR );
 				free($4);
 				freeaddrinfo(ai);
+			}
+			| peerparams PEERTYPE '=' QSTRING ';'
+			{
+				if ((0 == strcmp("server", $4)) ||
+				    (0 == strcmp("Server", $4)))
+				{
+					fddpi.config.cnf_peer_type_server = 1;
+				} else {
+					fddpi.config.cnf_peer_type_server = 0;
+				}
 			}
 			;
 

@@ -270,6 +270,7 @@ nomatch:
 (?i:"LoadExtension")	{ return LOADEXT; }
 (?i:"ConnectPeer")	{ return CONNPEER; }
 (?i:"ConnectTo")	{ return CONNTO; }
+(?i:"PeerType")		{ return PEERTYPE; }
 (?i:"No_TLS")		{ return NOTLS; }
 (?i:"TLS_Cred")		{ return TLS_CRED; }
 (?i:"TLS_CA")		{ return TLS_CA; }

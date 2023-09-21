@@ -792,7 +792,15 @@ psm_loop:
 			case STATE_WAITCNXACK_ELEC:
 			case STATE_WAITCNXACK:
 				LOG_D("%s: Connection established, %s", peer->p_hdr.info.pi_diamid, fd_cnx_getid(cnx));
-				fd_p_ce_handle_newcnx(peer, cnx);
+				
+				/* This is gross but it does the job, we don't 
+				 * want to send a CER if peer is a server */
+				if (1 == peer->p_hdr.info.config.cnf_peer_type_server) {
+					LOG_N("%s: Peer marked as a server, waiting for CER...", peer->p_hdr.info.pi_diamid);
+				} else {
+					LOG_N("%s: Peer considered a client, sending CER...", peer->p_hdr.info.pi_diamid);
+					fd_p_ce_handle_newcnx(peer, cnx);
+				}
 				break;
 
 			default:

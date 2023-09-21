@@ -287,9 +287,11 @@ TLS_Cred = "/etc/ssl/certs/freeDiameter.pem", "/etc/ssl/private/freeDiameter.key
 #  ConnectTo = "2001:200:903:2::202:1";
 #  TLS_Prio = "NORMAL";
 #  Realm = "realm.net"; # Reject the peer if it does not advertise this realm.
+#  PeerType = "server"; # Defaults to client type otherwise. We don't send CERs to peers marked as 'server'
 # Examples:
 #ConnectPeer = "aaa.wide.ad.jp";
 #ConnectPeer = "old.diameter.serv" { TcTimer = 60; TLS_old_method; No_SCTP; Port=3868; } ;
+#ConnectPeer = "old.diameter.serv" { TcTimer = 60; TLS_old_method; No_SCTP; Port=3868; PeerType = "server"; } ;
 
 
 ##############################################################
