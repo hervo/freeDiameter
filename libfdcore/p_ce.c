@@ -37,6 +37,8 @@
 
 /* This file contains code to handle Capabilities Exchange messages (CER and CEA) and election process */
 
+static uint8_t skip_host_ip(struct fd_endpoint* ep);
+
 /* Save a connection as peer's principal */
 static int set_peer_cnx(struct fd_peer * peer, struct cnxctx **cnx)
 {
@@ -109,6 +111,12 @@ static int add_CE_info(struct msg *msg, struct cnxctx * cnx, int isi_tls, int is
 	/* Add the AVP(s) -- not sure what is the purpose... We could probably only add the primary one ? */
 	for (li = fd_g_config->cnf_endpoints.next; li != &fd_g_config->cnf_endpoints; li = li->next) {
 		struct fd_endpoint * ep = (struct fd_endpoint *)li;
+
+		/* This is gross but it does the job, needed here as CERs
+		 * aren't piped through extensions before sending */
+		if (skip_host_ip(ep)) {
+			continue;
+		}
 		CHECK_FCT( fd_msg_avp_new ( dictobj, 0, &avp ) );
 		CHECK_FCT( fd_msg_avp_value_encode ( &ep->ss, avp ) );
 		CHECK_FCT( fd_msg_avp_add( msg, MSG_BRW_LAST_CHILD, avp ) );
@@ -1151,4 +1159,23 @@ int fd_p_ce_handle_newCER(struct msg ** msg, struct fd_peer * peer, struct cnxct
 	}
 				
 	return errors;
+}
+
+/* Returns 1 if the whitelist exists AND provided endpoint wasn't found in the whitelist, returns 0 otherwise */
+static uint8_t skip_host_ip(struct fd_endpoint* ep)
+{
+	struct fd_list *li = NULL;
+	uint8_t match = 0;
+	uint8_t whitelist_exists = fd_g_config->cer_host_ip_whitelist.next != &fd_g_config->cer_host_ip_whitelist;
+
+	for (li = fd_g_config->cer_host_ip_whitelist.next; li != &fd_g_config->cer_host_ip_whitelist; li = li->next) {
+		struct fd_endpoint * config_ep = (struct fd_endpoint *)li;
+		
+		if (ep->sin.sin_addr.s_addr == config_ep->sin.sin_addr.s_addr) {
+			match = 1;
+			break;
+		}
+	}
+
+	return ((1 == whitelist_exists) && (0 == match));
 }
