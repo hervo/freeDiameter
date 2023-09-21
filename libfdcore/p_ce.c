@@ -1101,10 +1101,15 @@ cleanup:
 int fd_p_ce_handle_newCER(struct msg ** msg, struct fd_peer * peer, struct cnxctx ** cnx, int valid)
 {
 	struct fd_pei pei;
+	int errors = 0;
 	int cur_state = fd_peer_getstate(peer);
 	memset(&pei, 0, sizeof(pei));
 	
 	switch (cur_state) {
+		case STATE_OPEN:
+			errors += 1;
+			break;
+
 		case STATE_CLOSED:
 			peer->p_receiver = *cnx;
 			*cnx = NULL;
@@ -1153,7 +1158,7 @@ int fd_p_ce_handle_newCER(struct msg ** msg, struct fd_peer * peer, struct cnxct
 			receiver_reject(cnx, msg, &pei);
 	}
 				
-	return 0;
+	return errors;
 }
 
 /* Returns 1 if the whitelist exists AND provided endpoint wasn't found in the whitelist, returns 0 otherwise */

@@ -763,7 +763,7 @@ psm_loop:
 		ASSERT(params);
 
 		/* Handle the message */
-		CHECK_FCT_DO( fd_p_ce_handle_newCER(&params->cer, peer, &params->cnx, params->validate), goto psm_end );
+		CHECK_FCT_DO( fd_p_ce_handle_newCER(&params->cer, peer, &params->cnx, params->validate), goto psm_reset );
 
 		/* Cleanup if needed */
 		if (params->cnx) {
