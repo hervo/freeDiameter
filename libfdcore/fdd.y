@@ -113,7 +113,6 @@ struct peer_info fddpi;
 %token		QOUTLIMIT
 %token		QLOCALLIMIT
 %token		LISTENON
-%token		CERHOSTIPWHITELIST
 %token		THRPERSRV
 %token		PROCESSINGPEERSPATTERN
 %token		PROCESSINGPEERSMINIMUM
@@ -124,6 +123,7 @@ struct peer_info fddpi;
 %token		CONNPEER
 %token		CONNTO
 %token		PEERTYPE
+%token		CERHOSTIPWHITELIST
 %token		TLS_CRED
 %token		TLS_CA
 %token		TLS_CRL
@@ -149,7 +149,6 @@ conffile:		/* Empty is OK -- for simplicity here, we reject in daemon later */
 			| conffile sec3436
 			| conffile sctpstreams
 			| conffile listenon
-			| conffile cerhostipwhitelist
 			| conffile thrpersrv
 			| conffile processingpeerspattern
 			| conffile processingpeersminimum
@@ -256,21 +255,6 @@ listenon:		LISTENON '=' QSTRING ';'
 				ret = getaddrinfo($3, NULL, &hints, &ai);
 				if (ret) { yyerror (&yylloc, conf, gai_strerror(ret)); YYERROR; }
 				CHECK_FCT_DO( fd_ep_add_merge( &conf->cnf_endpoints, ai->ai_addr, ai->ai_addrlen, EP_FL_CONF ), YYERROR );
-				freeaddrinfo(ai);
-				free($3);
-			}
-			;
-
-cerhostipwhitelist:		CERHOSTIPWHITELIST '=' QSTRING ';'
-			{
-				struct addrinfo hints, *ai;
-				int ret;
-				
-				memset(&hints, 0, sizeof(hints));
-				hints.ai_flags = AI_PASSIVE | AI_NUMERICHOST;
-				ret = getaddrinfo($3, NULL, &hints, &ai);
-				if (ret) { yyerror (&yylloc, conf, gai_strerror(ret)); YYERROR; }
-				CHECK_FCT_DO( fd_ep_add_merge( &conf->cer_host_ip_whitelist, ai->ai_addr, ai->ai_addrlen, EP_FL_CONF ), YYERROR );
 				freeaddrinfo(ai);
 				free($3);
 			}
@@ -507,10 +491,11 @@ extconf:		/* empty */
 			}
 			;
 			
-connpeer:		{
+connpeer:	{
 				memset(&fddpi, 0, sizeof(fddpi));
 				fddpi.config.pic_flags.persist = PI_PRST_ALWAYS;
 				fd_list_init( &fddpi.pi_endpoints, NULL );
+				fd_list_init( &fddpi.cer_host_ip_whitelist, NULL );
 			}
 			CONNPEER '=' QSTRING peerinfo ';'
 			{
@@ -524,6 +509,11 @@ connpeer:		{
 				free(fddpi.config.pic_priority);
 				while (!FD_IS_LIST_EMPTY(&fddpi.pi_endpoints)) {
 					struct fd_list * li = fddpi.pi_endpoints.next;
+					fd_list_unlink(li);
+					free(li);
+				}
+				while (!FD_IS_LIST_EMPTY(&fddpi.cer_host_ip_whitelist)) {
+					struct fd_list * li = fddpi.cer_host_ip_whitelist.next;
 					fd_list_unlink(li);
 					free(li);
 				}
@@ -631,6 +621,27 @@ peerparams:		/* empty */
 				if (ret) { yyerror (&yylloc, conf, gai_strerror(ret)); YYERROR; }
 				
 				CHECK_FCT_DO( fd_ep_add_merge( &fddpi.pi_endpoints, ai->ai_addr, ai->ai_addrlen, EP_FL_CONF | (disc ?: EP_ACCEPTALL) ), YYERROR );
+				free($4);
+				freeaddrinfo(ai);
+			}
+			| peerparams CERHOSTIPWHITELIST '=' QSTRING ';'
+			{
+				struct addrinfo hints, *ai;
+				int ret;
+				int disc = 0;
+
+				memset(&hints, 0, sizeof(hints));
+				hints.ai_flags = AI_ADDRCONFIG | AI_NUMERICHOST;
+				ret = getaddrinfo($4, NULL, &hints, &ai);
+				if (ret == EAI_NONAME) {
+					/* The name was maybe not numeric, try again */
+					disc = EP_FL_DISC;
+					hints.ai_flags &= ~ AI_NUMERICHOST;
+					ret = getaddrinfo($4, NULL, &hints, &ai);
+				}
+				if (ret) { yyerror (&yylloc, conf, gai_strerror(ret)); YYERROR; }
+				
+				CHECK_FCT_DO( fd_ep_add_merge( &fddpi.cer_host_ip_whitelist, ai->ai_addr, ai->ai_addrlen, EP_FL_CONF | (disc ?: EP_ACCEPTALL) ), YYERROR );
 				free($4);
 				freeaddrinfo(ai);
 			}

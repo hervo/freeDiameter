@@ -67,8 +67,8 @@ int fd_peer_alloc(struct fd_peer ** ptr)
 	memset(p, 0, sizeof(struct fd_peer));
 	
 	fd_list_init(&p->p_hdr.chain, p);
-	
 	fd_list_init(&p->p_hdr.info.pi_endpoints, p);
+	fd_list_init(&p->p_hdr.info.cer_host_ip_whitelist, p);
 	fd_list_init(&p->p_hdr.info.runtime.pir_apps, p);
 	
 	p->p_eyec = EYEC_PEER;
@@ -131,7 +131,15 @@ int fd_peer_add ( struct peer_info * info, const char * orig_dbg, void (*cb)(str
 			fd_list_unlink(li);
 			fd_list_insert_before(&p->p_hdr.info.pi_endpoints, li);
 		}
-	
+
+	/* Move the list of whitelisted endpoints into the peer */
+	if (info->cer_host_ip_whitelist.next)
+		while (!FD_IS_LIST_EMPTY( &info->cer_host_ip_whitelist ) ) {
+			li = info->cer_host_ip_whitelist.next;
+			fd_list_unlink(li);
+			fd_list_insert_before(&p->p_hdr.info.cer_host_ip_whitelist, li);
+		}
+
 	/* The internal data */
 	if (orig_dbg) {
 		CHECK_MALLOC( p->p_dbgorig = strdup(orig_dbg) );
@@ -339,6 +347,7 @@ int fd_peer_free(struct fd_peer ** ptr)
 	free_list( &p->p_hdr.info.runtime.pir_apps );
 	
 	free_list( &p->p_hdr.info.pi_endpoints );
+	free_list( &p->p_hdr.info.cer_host_ip_whitelist );
 	
 	free_null(p->p_dbgorig);
 	

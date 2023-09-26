@@ -37,7 +37,7 @@
 
 /* This file contains code to handle Capabilities Exchange messages (CER and CEA) and election process */
 
-static uint8_t skip_host_ip(struct fd_endpoint* ep);
+static uint8_t skip_host_ip(struct fd_peer * peer, struct fd_endpoint* ep);
 
 /* Save a connection as peer's principal */
 static int set_peer_cnx(struct fd_peer * peer, struct cnxctx **cnx)
@@ -95,7 +95,7 @@ static __inline__ int election_result(struct fd_peer * peer)
 }
 
 /* Add AVPs about local information in a CER or CEA */
-static int add_CE_info(struct msg *msg, struct cnxctx * cnx, int isi_tls, int isi_none)
+static int add_CE_info(struct msg *msg, struct fd_peer * peer, struct cnxctx * cnx, int isi_tls, int isi_none)
 {
 	struct dict_object * dictobj = NULL;
 	struct avp * avp = NULL;
@@ -114,7 +114,7 @@ static int add_CE_info(struct msg *msg, struct cnxctx * cnx, int isi_tls, int is
 
 		/* This is gross but it does the job, needed here as CERs
 		 * aren't piped through extensions before sending */
-		if (skip_host_ip(ep)) {
+		if (skip_host_ip(peer, ep)) {
 			continue;
 		}
 		CHECK_FCT( fd_msg_avp_new ( dictobj, 0, &avp ) );
@@ -624,7 +624,7 @@ static int create_CER(struct fd_peer * peer, struct cnxctx * cnx, struct msg ** 
 	}
 	
 	/* Add the information about the local peer */
-	CHECK_FCT( add_CE_info(*cer, cnx, isi_tls, isi_none) );
+	CHECK_FCT( add_CE_info(*cer, peer, cnx, isi_tls, isi_none) );
 	
 	/* Done! */
 	return 0;
@@ -645,7 +645,7 @@ static int to_waitcea(struct fd_peer * peer, struct cnxctx * cnx)
 }
 
 /* Reject an incoming connection attempt */
-static void receiver_reject(struct cnxctx ** recv_cnx, struct msg ** cer, struct fd_pei * error)
+static void receiver_reject(struct cnxctx ** recv_cnx, struct msg ** cer, struct fd_peer * peer, struct fd_pei * error)
 {
 	struct msg_hdr * hdr = NULL;
 	
@@ -658,7 +658,7 @@ static void receiver_reject(struct cnxctx ** recv_cnx, struct msg ** cer, struct
 		CHECK_FCT_DO( fd_msg_add_origin ( *cer, 1 ), goto destroy );
 	} else {
 		/* Add other AVPs to be compliant with the ABNF */
-		CHECK_FCT_DO( add_CE_info(*cer, *recv_cnx, 0, 0), goto destroy );
+		CHECK_FCT_DO( add_CE_info(*cer, peer, *recv_cnx, 0, 0), goto destroy );
 	}
 	CHECK_FCT_DO( fd_out_send(cer, *recv_cnx, NULL, 0), goto destroy );
 	
@@ -711,7 +711,7 @@ int fd_p_ce_handle_newcnx(struct fd_peer * peer, struct cnxctx * initiator)
 			LOG_D("%s: Election lost on incoming connection, closing and waiting for CEA on outgoing connection.", peer->p_hdr.info.pi_diamid);
 
 			/* Answer an ELECTION LOST to the receiver side */
-			receiver_reject(&peer->p_receiver, &peer->p_cer, &pei);
+			receiver_reject(&peer->p_receiver, &peer->p_cer, peer, &pei);
 			CHECK_FCT( to_waitcea(peer, initiator) );
 		}
 	} else {
@@ -1012,7 +1012,7 @@ int fd_p_ce_process_receiver(struct fd_peer * peer)
 	/* Reply a CEA */
 	CHECK_FCT( fd_msg_new_answer_from_req ( fd_g_config->cnf_dict, &msg, 0 ) );
 	CHECK_FCT( fd_msg_rescode_set(msg, "DIAMETER_SUCCESS", NULL, NULL, 0 ) );
-	CHECK_FCT( add_CE_info(msg, peer->p_cnxctx, isi & PI_SEC_TLS_OLD, isi & PI_SEC_NONE) );
+	CHECK_FCT( add_CE_info(msg, peer, peer->p_cnxctx, isi & PI_SEC_TLS_OLD, isi & PI_SEC_NONE) );
 	
 	/* The connection is complete, but we may still need TLS handshake */
 	fd_hook_call(HOOK_PEER_CONNECT_SUCCESS, msg, peer, NULL, NULL);
@@ -1078,7 +1078,7 @@ error_abort:
 	if (pei.pei_errcode) {
 		/* Send the error */
 		fd_hook_call(HOOK_PEER_CONNECT_FAILED, msg, peer, pei.pei_message ?: pei.pei_errcode, NULL);
-		receiver_reject(&peer->p_cnxctx, &msg, &pei);
+		receiver_reject(&peer->p_cnxctx, &msg, peer, &pei);
 	} else {
 		char buf[1024];
 		snprintf(buf, sizeof(buf), "Unexpected error occurred while processing incoming connection from '%s'.", peer->p_hdr.info.pi_diamid);
@@ -1142,7 +1142,7 @@ int fd_p_ce_handle_newCER(struct msg ** msg, struct fd_peer * peer, struct cnxct
 				pei.pei_errcode = "ELECTION_LOST";
 				pei.pei_message = "Please answer my CER instead, you won the election.";
 				LOG_D("%s: Election lost on incoming connection, closing and waiting for CEA on outgoing connection.", peer->p_hdr.info.pi_diamid);
-				receiver_reject(cnx, msg, &pei);
+				receiver_reject(cnx, msg, peer, &pei);
 			}
 			break;
 
@@ -1150,22 +1150,27 @@ int fd_p_ce_handle_newCER(struct msg ** msg, struct fd_peer * peer, struct cnxct
 			pei.pei_errcode = "DIAMETER_UNABLE_TO_COMPLY"; /* INVALID COMMAND? in case of Capabilities-Updates? */
 			pei.pei_message = "Invalid state to receive a new connection attempt.";
 			LOG_E("%s: Rejecting new connection attempt while our state machine is in state '%s'", peer->p_hdr.info.pi_diamid, STATE_STR(cur_state));
-			receiver_reject(cnx, msg, &pei);
+			receiver_reject(cnx, msg, peer, &pei);
 	}
 				
 	return 0;
 }
 
 /* Returns 1 if the whitelist exists AND provided endpoint wasn't found in the whitelist, returns 0 otherwise */
-static uint8_t skip_host_ip(struct fd_endpoint* ep)
+static uint8_t skip_host_ip(struct fd_peer * peer, struct fd_endpoint* ep)
 {
 	struct fd_list *li = NULL;
 	uint8_t match = 0;
-	uint8_t whitelist_exists = fd_g_config->cer_host_ip_whitelist.next != &fd_g_config->cer_host_ip_whitelist;
+	uint8_t whitelist_exists = 0;
 
-	for (li = fd_g_config->cer_host_ip_whitelist.next; li != &fd_g_config->cer_host_ip_whitelist; li = li->next) {
+	whitelist_exists = !FD_IS_LIST_EMPTY(&peer->p_hdr.info.cer_host_ip_whitelist);
+
+	for (li = peer->p_hdr.info.cer_host_ip_whitelist.next;
+	     li != &peer->p_hdr.info.cer_host_ip_whitelist;
+		 li = li->next)
+	{
 		struct fd_endpoint * config_ep = (struct fd_endpoint *)li;
-		
+
 		if (ep->sin.sin_addr.s_addr == config_ep->sin.sin_addr.s_addr) {
 			match = 1;
 			break;

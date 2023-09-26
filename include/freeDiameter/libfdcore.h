@@ -185,7 +185,6 @@ struct fd_config {
 	struct dictionary *cnf_dict;	/* pointer to the global dictionary */
 	struct fifo	  *cnf_main_ev;	/* events for the daemon's main (struct fd_event items) */
 
-	struct fd_list cer_host_ip_whitelist;	/* only include Host-IP-Address AVPs that have the following endpoints in CER */
 };
 extern struct fd_config *fd_g_config; /* The pointer to access the global configuration, initalized in main */
 
@@ -329,6 +328,7 @@ struct peer_info {
 	} runtime;	/* Data populated after connection, may change between 2 connections -- not used by fd_peer_add */
 	
 	struct fd_list	pi_endpoints;	/* Endpoint(s) of the remote peer (configured, discovered, or advertized). list of struct fd_endpoint. DNS resolved if empty. */
+	struct fd_list cer_host_ip_whitelist;	/* only include Host-IP-Address AVPs that have the following endpoints in CER */
 };
 
 

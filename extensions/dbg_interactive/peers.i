@@ -74,6 +74,7 @@ static void fd_add_cb(struct peer_info *peer, void *data) {
 		}
 		
 		fd_list_init(&np->pi_endpoints, NULL);
+		fd_list_init(&np->cer_host_ip_whitelist, NULL );
 		
 		return np;
 	}
