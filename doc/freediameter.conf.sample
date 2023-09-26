@@ -78,14 +78,6 @@
 #ListenOn = "2001:200:903:2::202:1";
 #ListenOn = "fe80::21c:5ff:fe98:7d62%eth0";
 
-# Specify which addresses are included in CER Host-IP-Address
-# AVPs. The default behaviour includes all addresses available.
-# If we wanted to only include addresses "1.1.1.1", "2.2.2.2"
-# but NOT "3.3.3.3" then we would include the following into
-# the conf file:
-#CerHostIpWhitelist = "1.1.1.1"
-#CerHostIpWhitelist = "2.2.2.2"
-
 ##############################################################
 ##  Server configuration
 
@@ -285,12 +277,19 @@ TLS_Cred = "/etc/ssl/certs/freeDiameter.pem", "/etc/ssl/private/freeDiameter.key
 #  TwTimer = 30;
 #  ConnectTo = "202.249.37.5";
 #  ConnectTo = "2001:200:903:2::202:1";
+#  CerHostIpWhitelist = "1.1.1.1";
+#  CerHostIpWhitelist = "2.2.2.2";
 #  TLS_Prio = "NORMAL";
 #  Realm = "realm.net"; # Reject the peer if it does not advertise this realm.
 #  PeerType = "server"; # Defaults to client type otherwise. We don't send CERs to peers marked as 'server'
+# We can specify which addresses are included in CER Host-IP-Address
+# AVPs. The default behaviour includes all addresses available.
+# If we wanted to only include addresses "1.1.1.1", "2.2.2.2"
+# but NOT "3.3.3.3" then we would include the following into
+# the peer CerHostIpWhitelist = "1.1.1.1"; CerHostIpWhitelist = "2.2.2.2";
 # Examples:
 #ConnectPeer = "aaa.wide.ad.jp";
-#ConnectPeer = "old.diameter.serv" { TcTimer = 60; TLS_old_method; No_SCTP; Port=3868; } ;
+#ConnectPeer = "old.diameter.serv" { TcTimer = 60; TLS_old_method; No_SCTP; Port=3868; CerHostIpWhitelist = "1.1.1.1"; } ;
 #ConnectPeer = "old.diameter.serv" { TcTimer = 60; TLS_old_method; No_SCTP; Port=3868; PeerType = "server"; } ;
 
 
