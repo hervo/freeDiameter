@@ -647,12 +647,12 @@ peerparams:		/* empty */
 			}
 			| peerparams PEERTYPE '=' QSTRING ';'
 			{
-				if ((0 == strcmp("server", $4)) ||
-				    (0 == strcmp("Server", $4)))
+				if ((0 == strcmp("client", $4)) ||
+				    (0 == strcmp("Client", $4)))
 				{
-					fddpi.config.cnf_peer_type_server = 1;
+					fddpi.config.cnf_peer_type_client = 1;
 				} else {
-					fddpi.config.cnf_peer_type_server = 0;
+					fddpi.config.cnf_peer_type_client = 0;
 				}
 			}
 			;

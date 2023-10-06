@@ -794,11 +794,11 @@ psm_loop:
 				LOG_D("%s: Connection established, %s", peer->p_hdr.info.pi_diamid, fd_cnx_getid(cnx));
 				
 				/* This is gross but it does the job, we don't 
-				 * want to send a CER if peer is a server */
-				if (1 == peer->p_hdr.info.config.cnf_peer_type_server) {
-					LOG_N("%s: Peer marked as a server, waiting for CER...", peer->p_hdr.info.pi_diamid);
+				 * want to send a CER if peer is a client */
+				if (1 == peer->p_hdr.info.config.cnf_peer_type_client) {
+					LOG_N("%s: Peer marked as a client, waiting for CER...", peer->p_hdr.info.pi_diamid);
 				} else {
-					LOG_N("%s: Peer considered a client, sending CER...", peer->p_hdr.info.pi_diamid);
+					LOG_N("%s: Peer considered a server, sending CER...", peer->p_hdr.info.pi_diamid);
 					fd_p_ce_handle_newcnx(peer, cnx);
 				}
 				break;
@@ -850,12 +850,18 @@ psm_loop:
 				goto psm_loop;
 
 			case STATE_CLOSED:
-				LOG_D("%s: Connecting...", peer->p_hdr.info.pi_diamid);
-				CHECK_FCT_DO( fd_psm_change_state(peer, STATE_WAITCNXACK), goto psm_end );
-				fd_psm_next_timeout(peer, 0, CNX_TIMEOUT);
-				CHECK_FCT_DO( fd_p_cnx_init(peer), goto psm_end );
-				goto psm_loop;
-
+				/* Only connect to the peer if it's a server */
+				if (!peer->p_hdr.info.config.cnf_peer_type_client) {
+					LOG_D("%s: Connecting...", peer->p_hdr.info.pi_diamid);
+					CHECK_FCT_DO( fd_psm_change_state(peer, STATE_WAITCNXACK), goto psm_end );
+					fd_psm_next_timeout(peer, 0, CNX_TIMEOUT);
+					CHECK_FCT_DO( fd_p_cnx_init(peer), goto psm_end );
+					goto psm_loop;
+				} else {
+					LOG_N("'%s' is considered a client so I'll wait for them to establish the connection...", peer->p_hdr.info.pi_diamid);
+					fd_psm_next_timeout(peer, created_started, 30);
+					goto psm_loop;
+				}
 			case STATE_SUSPECT:
 				/* Mark the connection problem */
 				peer->p_flags.pf_cnx_pb = 1;
