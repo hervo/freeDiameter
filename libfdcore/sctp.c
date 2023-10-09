@@ -951,7 +951,8 @@ int fd_sctp_client( int *sock, int no_ip6, uint16_t port, struct fd_list * list,
 	/* Create the array of addresses, add first the configured addresses, then the discovered, then the other ones */
 	CHECK_FCT_DO( ret = add_addresses_from_list_mask(&sar.buf, &size, &count, family, htons(port), list, EP_FL_CONF,              EP_FL_CONF	), goto out );
 	CHECK_FCT_DO( ret = add_addresses_from_list_mask(&sar.buf, &size, &count, family, htons(port), list, EP_FL_CONF | EP_FL_DISC, EP_FL_DISC	), goto out );
-	CHECK_FCT_DO( ret = add_addresses_from_list_mask(&sar.buf, &size, &count, family, htons(port), list, EP_FL_CONF | EP_FL_DISC, 0		), goto out );
+	// TODO: This needs to be re-added and the with functionality that prevents the same address being added multiple times 
+	// CHECK_FCT_DO( ret = add_addresses_from_list_mask(&sar.buf, &size, &count, family, htons(port), list, EP_FL_CONF | EP_FL_DISC, 0		), goto out );
 	
 	/* Try connecting */
 	{
