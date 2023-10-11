@@ -697,6 +697,33 @@ static int fd_setsockopt_postbind(int sk, int bound_to_default)
 	return 0;
 }
 
+static int address_already_in_array(uint8_t * array, int addr_count, struct fd_endpoint * ep) {
+	
+	union {
+		uint8_t *buf;
+		sSA4	*sin;
+		sSA6	*sin6;
+	} ptr;
+	ptr.buf = array;
+
+	LOG_D("Checking if address is already in array...");
+	for (int i = 0; i < addr_count; ++i) {
+		int cmp = memcmp(&ep->sin.sin_addr,
+		                 &ptr.sin[i].sin_addr,
+						 sizeof(ep->sin.sin_addr));
+
+		int cmp6 = memcmp(&ep->sin6.sin6_addr,
+		                  &ptr.sin6[i].sin6_addr,
+						  sizeof(ep->sin6.sin6_addr));
+
+		if ((0 == cmp) || (0 == cmp6)) {
+			return 1;
+		}
+	}
+	
+	return 0;
+}
+
 /* Add addresses from a list to an array, with filter on the flags */
 static int add_addresses_from_list_mask(uint8_t ** array, size_t * size, int * addr_count, int target_family, uint16_t port, struct fd_list * list, uint32_t mask, uint32_t val)
 {
@@ -718,6 +745,12 @@ static int add_addresses_from_list_mask(uint8_t ** array, size_t * size, int * a
 		if ((val & mask) != (ep->flags & mask))
 			continue;
 		
+		/* Port gets clobbered later so we need to make sure that there
+		 * are no matching addresses, otherwise we try to open the same 
+		 * socket multiple times and all SCTP reconnects fail */
+		if (address_already_in_array(*array, *addr_count, ep))
+			continue;
+
 		if (ep->sa.sa_family == AF_INET) {
 			to_add4 ++;
 		} else {
