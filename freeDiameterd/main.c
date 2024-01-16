@@ -43,17 +43,21 @@
 #include <signal.h>
 #include <getopt.h>
 #include <locale.h>
+#include <time.h>
 #include <syslog.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 /* forward declarations */
 static int main_cmdline(int argc, char *argv[]);
 static void * catch_signals(void * arg);
 static pthread_t signals_thr;
+static void * poll_config_file(void * arg);
+static pthread_t reload_thr;
 
 static char *conffile = NULL;
 static char *reload_conffile = NULL;
@@ -213,6 +217,10 @@ int main(int argc, char * argv[])
 	/* Allow SIGINT and SIGTERM from this point to terminate the application */
 	CHECK_POSIX_DO( pthread_create(&signals_thr, NULL, catch_signals, NULL), goto error );
 
+	if (reload_conffile) {
+		CHECK_POSIX_DO( pthread_create(&reload_thr, NULL, poll_config_file, (void*)reload_conffile), goto error );
+	}
+
 	TRACE_DEBUG(INFO, FD_PROJECT_BINARY " daemon initialized.");
 
 	/* Now, just wait for termination */
@@ -221,11 +229,15 @@ int main(int argc, char * argv[])
 	/* Just in case it was not the result of a signal, we cancel signals_thr */
 	fd_thr_term(&signals_thr);
 
+	fd_thr_term(&reload_thr);
+
+
 	return EXIT_SUCCESS;
 error:
 	CHECK_FCT_DO( fd_core_shutdown(),  );
 	CHECK_FCT_DO( fd_core_wait_shutdown_complete(), return EXIT_FAILURE );
 	fd_thr_term(&signals_thr);
+	fd_thr_term(&reload_thr);
 	return EXIT_FAILURE;
 }
 
@@ -450,5 +462,42 @@ static void * catch_signals(void * arg)
 out:
 	/* Better way to handle this ? */
 	ASSERT(0);
+	return NULL;
+}
+
+static time_t file_has_changed_since(time_t last_reload, const char* filename)
+{
+	struct stat statbuf;
+	int ret = stat(filename, &statbuf);
+	if (ret)
+	        return 0;
+	if (statbuf.st_mtim.tv_sec == last_reload)
+	        return 0;
+	return statbuf.st_mtim.tv_sec;
+}
+
+static void * poll_config_file(void * arg)
+{
+	const char* reload_conf_file = (const char*)arg;
+
+	static struct fd_config * reload_conf = NULL;
+	if (!reload_conf) {
+		static struct fd_config reload_conf_s;
+		reload_conf = &reload_conf_s;
+		fd_conf_init_instance(reload_conf);
+		reload_conf->cnf_file = strdup(reload_conf_file);
+	}
+
+	time_t last_reload = 0;
+	while (1) {
+		pthread_testcancel();
+		time_t ret = file_has_changed_since(last_reload, reload_conf_file);
+		if (!ret)
+			continue;
+		last_reload = ret;
+		fprintf(stderr, "Reloading conf from %s\n", reload_conf_file);
+		fd_conf_reload(reload_conf);
+		sleep(1);
+	}
 	return NULL;
 }
