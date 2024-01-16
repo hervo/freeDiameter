@@ -1,5 +1,5 @@
 #include <freeDiameter/extension.h>
-#include <python3.10/Python.h>
+#include <python3.11/Python.h>
 #include <stdlib.h>
 #include <signal.h>
 #include "python_dra_config.h"

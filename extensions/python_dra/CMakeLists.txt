@@ -9,7 +9,7 @@ SET(PYTHON_DRA_SRC
 
 # Compile as a module
 FD_ADD_EXTENSION(python_dra ${PYTHON_DRA_SRC} ${PY_LIB})
-TARGET_LINK_LIBRARIES(python_dra -lpython3.10)
+TARGET_LINK_LIBRARIES(python_dra -lpython3.11)
 
 ####
 ## INSTALL section ##

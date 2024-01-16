@@ -103,7 +103,7 @@ FD_EXTENSION_SUBDIR(dbg_peers     "Outputs periodical info about peers into file
 FD_EXTENSION_SUBDIR(dbg_msg_timings "Show some timing information for messages"      ON)
 FD_EXTENSION_SUBDIR(dbg_msg_dumps   "Show human-readable content of the received & sent messages"      ON)
 FD_EXTENSION_SUBDIR(dbg_rt          "Routing extension for debugging the routing module" ON)
-FD_EXTENSION_SUBDIR(test_app        "Testing application to send dummy message to another peer, like a Diameter 'ping'" OFF)
+FD_EXTENSION_SUBDIR(test_app        "Testing application to send dummy message to another peer, like a Diameter 'ping'" ON)
 FD_EXTENSION_SUBDIR(test_as     "Receive Abort-Session-Requests and display the data" OFF)
 FD_EXTENSION_SUBDIR(test_cc     "Receive Credit-Control-Requests and display the data" ON)
 FD_EXTENSION_SUBDIR(test_ccload     "Generate Credit-Control-Requests and count replies" ON)
@@ -118,7 +118,7 @@ FD_EXTENSION_SUBDIR(test_netemul    "Simple Diameter network emulator proxy exte
 # The following extension have very little use except for specific tests, so we disable them except in Debug configurations.
 IF (CMAKE_BUILD_TYPE MATCHES "Debug")
 	FD_EXTENSION_SUBDIR(_sample     "Simple extension to demonstrate extension mechanism, for developpers" OFF)
-	FD_EXTENSION_SUBDIR(test_acct   "Receive Accounting-Requests and display the data, but no storage" OFF)
+	FD_EXTENSION_SUBDIR(test_acct   "Receive Accounting-Requests and display the data, but no storage" ON)
 	FD_EXTENSION_SUBDIR(test_rt_any "Routing extension randomly sending message to any peer available, for testing purpose" OFF)
 ENDIF (CMAKE_BUILD_TYPE MATCHES "Debug")
 
