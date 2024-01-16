@@ -165,6 +165,22 @@ static void date_logger(int printlevel, const char *format, va_list ap)
 
     fflush(stdout);
 }
+
+void connect_peer_poc()
+{
+    static struct fd_config * reload_conf = NULL;
+    if (!reload_conf) {
+        fprintf(stderr, "init conf\n");
+	static struct fd_config reload_conf_s;
+	reload_conf = &reload_conf_s;
+        fd_conf_init_instance(reload_conf);
+	reload_conf->cnf_file = strdup("/tmp/conf.txt");
+    }
+
+    fprintf(stderr, "reloading conf\n");
+    fd_conf_reload(reload_conf);
+}
+
 /* freeDiameter starting point */
 int main(int argc, char * argv[])
 {
@@ -180,11 +196,6 @@ int main(int argc, char * argv[])
 	ret = main_cmdline(argc, argv);
 	if (ret != 0) {
 		return EXIT_FAILURE;
-	}
-
-	if (daemon_mode) {
-		TRACE_DEBUG(INFO, "entering background mode");
-		CHECK_SYS_DO( daemon(1, 0), return EXIT_FAILURE );
 	}
 
 	CHECK_FCT_DO( pidfile_create(), return EXIT_FAILURE );
@@ -205,6 +216,11 @@ int main(int argc, char * argv[])
 
 	/* Parse the configuration file */
 	CHECK_FCT_DO( fd_core_parseconf(conffile), goto error );
+
+	if (daemon_mode) {
+		fprintf(stderr, "call connect PoC\n");
+		connect_peer_poc();
+	}
 
 	/* Start the servers */
 	CHECK_FCT_DO( fd_core_start(), goto error );
