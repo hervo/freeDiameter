@@ -10,4 +10,4 @@ SET(RT_PYFORM_SRC
 
 # Compile as a module
 FD_ADD_EXTENSION(rt_pyform ${RT_PYFORM_SRC} ${PY_LIB})
-TARGET_LINK_LIBRARIES(rt_pyform -lpython3.10)
+TARGET_LINK_LIBRARIES(rt_pyform -lpython3.11)

@@ -4,10 +4,10 @@
 
 #include <freeDiameter/extension.h>
 #include <signal.h>
-#include "prom/prom.h"
+#include "prom.h"
 #include <stdio.h>
 #include "microhttpd.h"
-#include "prom/promhttp.h"
+#include "promhttp.h"
 #include <stdbool.h>
 #include <string.h>
 #include "dbg_peers_config.h"
