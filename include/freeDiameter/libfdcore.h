@@ -188,6 +188,7 @@ struct fd_config {
 };
 extern struct fd_config *fd_g_config; /* The pointer to access the global configuration, initalized in main */
 
+int fd_conf_init_instance(struct fd_config * conf);
 
 
 /*============================================================*/
