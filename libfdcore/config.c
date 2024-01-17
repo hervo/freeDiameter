@@ -45,47 +45,52 @@
 # define GNUTLS_DEFAULT_DHBITS 1024
 #endif /* GNUTLS_DEFAULT_DHBITS */
 
-/* Initialize the fd_g_config structure to default values -- it should already have been initialized to all-0 */
-int fd_conf_init()
+int fd_conf_init_instance(struct fd_config * conf)
 {
 	TRACE_ENTRY();
 	
-	fd_g_config->cnf_eyec = EYEC_CONFIG;
-	
-	fd_g_config->cnf_timer_tc = 30;
-	fd_g_config->cnf_timer_tw = 30;
-	
-	fd_g_config->cnf_port     = DIAMETER_PORT;
-	fd_g_config->cnf_port_tls = DIAMETER_SECURE_PORT;
-	fd_g_config->cnf_sctp_str = 30;
-	fd_g_config->cnf_thr_srv  = 5;
-	fd_g_config->cnf_processing_peers_minimum = 0;
-	fd_g_config->cnf_dispthr  = 4;
-	fd_g_config->cnf_rtinthr = 1;
-	fd_g_config->cnf_rtoutthr = 1;
-	fd_g_config->cnf_qin_limit = 20;
-	fd_g_config->cnf_qout_limit = 30;
-	fd_g_config->cnf_qlocal_limit = 25;
-	fd_list_init(&fd_g_config->cnf_endpoints, NULL);
-	fd_list_init(&fd_g_config->cnf_apps, NULL);
+	conf->cnf_eyec = EYEC_CONFIG;
+
+	conf->cnf_timer_tc = 30;
+	conf->cnf_timer_tw = 30;
+
+	conf->cnf_port     = DIAMETER_PORT;
+	conf->cnf_port_tls = DIAMETER_SECURE_PORT;
+	conf->cnf_sctp_str = 30;
+	conf->cnf_thr_srv  = 5;
+	conf->cnf_processing_peers_minimum = 0;
+	conf->cnf_dispthr  = 4;
+	conf->cnf_rtinthr = 1;
+	conf->cnf_rtoutthr = 1;
+	conf->cnf_qin_limit = 20;
+	conf->cnf_qout_limit = 30;
+	conf->cnf_qlocal_limit = 25;
+	fd_list_init(&conf->cnf_endpoints, NULL);
+	fd_list_init(&conf->cnf_apps, NULL);
 	#ifdef DISABLE_SCTP
-	fd_g_config->cnf_flags.no_sctp = 1;
+	conf->cnf_flags.no_sctp = 1;
 	#endif /* DISABLE_SCTP */
-	
-	fd_g_config->cnf_orstateid = (uint32_t) time(NULL);
-	fd_g_config->cnf_rr_in_answers = 1;
-	
-	CHECK_FCT( fd_dict_init(&fd_g_config->cnf_dict) );
-	CHECK_FCT( fd_fifo_new(&fd_g_config->cnf_main_ev, 0) );
+
+	conf->cnf_orstateid = (uint32_t) time(NULL);
+	conf->cnf_rr_in_answers = 1;
+
+	CHECK_FCT( fd_dict_init(&conf->cnf_dict) );
+	CHECK_FCT( fd_fifo_new(&conf->cnf_main_ev, 0) );
 	
 	/* TLS parameters */
-	CHECK_GNUTLS_DO( gnutls_certificate_allocate_credentials (&fd_g_config->cnf_sec_data.credentials), return ENOMEM );
-	CHECK_GNUTLS_DO( gnutls_dh_params_init (&fd_g_config->cnf_sec_data.dh_cache), return ENOMEM );
+	CHECK_GNUTLS_DO( gnutls_certificate_allocate_credentials (&conf->cnf_sec_data.credentials), return ENOMEM );
+	CHECK_GNUTLS_DO( gnutls_dh_params_init (&conf->cnf_sec_data.dh_cache), return ENOMEM );
 #ifdef GNUTLS_VERSION_300
-	CHECK_GNUTLS_DO( gnutls_x509_trust_list_init(&fd_g_config->cnf_sec_data.trustlist, 0), return ENOMEM );
+	CHECK_GNUTLS_DO( gnutls_x509_trust_list_init(&conf->cnf_sec_data.trustlist, 0), return ENOMEM );
 #endif /* GNUTLS_VERSION_300 */
 
 	return 0;
+}
+
+/* Initialize the fd_g_config structure to default values -- it should already have been initialized to all-0 */
+int fd_conf_init()
+{
+	return fd_conf_init_instance(fd_g_config);
 }
 
 DECLARE_FD_DUMP_PROTOTYPE(fd_conf_dump)
