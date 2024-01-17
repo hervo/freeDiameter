@@ -254,6 +254,41 @@ static int fd_conf_print_details_func (gnutls_x509_crt_t cert,
 #ifndef GNUTLS_VERSION_300
 GCC_DIAG_OFF("-Wdeprecated-declarations")
 #endif /* !GNUTLS_VERSION_300 */
+
+int fd_conf_reload(struct fd_config * conf)
+{
+	extern FILE * fddin;
+	const char * orig = NULL;
+
+	/*  if cnf_file is not set */
+	if (!conf->cnf_file)
+		return 1;
+
+	fddin = fopen(conf->cnf_file, "r");
+	if ((fddin == NULL) && (*conf->cnf_file != '/')) {
+		char * new_cnf = NULL;
+		/* We got a relative path, attempt to add the default directory prefix */
+		orig = conf->cnf_file;
+		CHECK_MALLOC( new_cnf = malloc(strlen(orig) + strlen(DEFAULT_CONF_PATH) + 2) ); /* we will not free it, but not important */
+		sprintf( new_cnf, DEFAULT_CONF_PATH "/%s", orig );
+		conf->cnf_file = new_cnf;
+		fddin = fopen(conf->cnf_file, "r");
+	}
+	if (fddin == NULL) {
+		int ret = errno;
+		LOG_F("Unable to open configuration file for reading; tried the following locations: %s%s%s; Error: %s",
+				  orig ?: "", orig? " and " : "", conf->cnf_file, strerror(ret));
+		return ret;
+	}
+
+	/* call yacc parser */
+	TRACE_DEBUG (FULL, "Parsing configuration file: %s", conf->cnf_file);
+	CHECK_FCT(  fdd_reloadparse(conf)  );
+
+	/* close the file */
+	fclose(fddin);
+}
+
 /* Parse the configuration file (using the yacc parser) */
 int fd_conf_parse()
 {
