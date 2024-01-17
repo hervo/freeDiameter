@@ -190,6 +190,8 @@ extern struct fd_config *fd_g_config; /* The pointer to access the global config
 
 int fd_conf_init_instance(struct fd_config * conf);
 
+int fd_conf_reload(struct fd_config * conf);
+
 
 /*============================================================*/
 /*                         PEERS                              */
