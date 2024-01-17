@@ -83,6 +83,7 @@
 
 
 /* Configuration */
+int fd_conf_init_instance(struct fd_config * conf);
 int fd_conf_init();
 int fd_conf_deinit();
 int fd_conf_parse();
