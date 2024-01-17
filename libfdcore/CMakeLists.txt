@@ -6,8 +6,9 @@ cmake_policy(VERSION 2.8.12)
 
 # Configuration parser
 BISON_FILE(fdd.y)
+BISON_FILE(fdd_reload.y)
 FLEX_FILE(fdd.l)
-SET_SOURCE_FILES_PROPERTIES(lex.fdd.c fdd.tab.c PROPERTIES COMPILE_FLAGS "-I ${CMAKE_CURRENT_SOURCE_DIR}")
+SET_SOURCE_FILES_PROPERTIES(lex.fdd.c fdd.tab.c fdd_reload.tab.c PROPERTIES COMPILE_FLAGS "-I ${CMAKE_CURRENT_SOURCE_DIR}")
 
 # List of source files
 SET(FDCORE_SRC
@@ -48,6 +49,8 @@ SET(FDCORE_GEN_SRC
 		lex.fdd.c
 		fdd.tab.c
 		fdd.tab.h
+		fdd_reload.tab.c
+                fdd_reload.tab.h
 	)
 	
 # Save the list of files for the tests 
