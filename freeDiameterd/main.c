@@ -56,6 +56,7 @@ static void * catch_signals(void * arg);
 static pthread_t signals_thr;
 
 static char *conffile = NULL;
+static char *reload_conffile = NULL;
 static int daemon_mode = 0;
 static int gnutls_debug = 0;
 static char *pidfile = NULL;
@@ -255,6 +256,7 @@ static void main_help( void )
   		"  -V, --version           Print version and exit\n"
   		"  -c, --config=filename   Read configuration from this file instead of the \n"
 		"                          default location (" DEFAULT_CONF_PATH "/" FD_DEFAULT_CONF_FILENAME ")\n"
+                "  -r, --reload=filename   Periodically reload ConnectPeers from this file.\n"
 		"  -D, --daemon            Start program in background\n"
 		"  -p, --pidfile=filename  Write PID to filename\n"
 		"  -s, --syslog            Write log output to syslog (instead of stdout)\n"
@@ -282,6 +284,7 @@ static int main_cmdline(int argc, char *argv[])
 		{ "help",	no_argument, 		NULL, 'h' },
 		{ "version",	no_argument, 		NULL, 'V' },
 		{ "config",	required_argument, 	NULL, 'c' },
+		{ "reload",	required_argument, 	NULL, 'r' },
 		{ "datelogger", no_argument,		NULL, 't' },
 		{ "syslog",     no_argument,            NULL, 's' },
 		{ "daemon",	no_argument, 		NULL, 'D' },
@@ -297,7 +300,7 @@ static int main_cmdline(int argc, char *argv[])
 
 	/* Loop on arguments */
 	while (1) {
-		c = getopt_long (argc, argv, "hVc:Dp:dql:f:F:g:st", long_options, &option_index);
+		c = getopt_long (argc, argv, "hVc:r:Dp:dql:f:F:g:st", long_options, &option_index);
 		if (c == -1)
 			break;	/* Exit from the loop.  */
 
@@ -316,6 +319,10 @@ static int main_cmdline(int argc, char *argv[])
 					return EINVAL;
 				}
 				conffile = optarg;
+				break;
+
+			case 'r':	/* Periodically reload ConnectPeers from this file..  */
+				reload_conffile = optarg;
 				break;
 
 			case 'D':
