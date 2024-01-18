@@ -163,9 +163,11 @@ connpeer:	{
 			CONNPEER '=' QSTRING peerinfo ';'
 			{
 				fddpi_reload.pi_diamid = $4;
-				CHECK_FCT_DO( fd_peer_add ( &fddpi_reload, conf->cnf_file, NULL, NULL ),
-					{ yyerror (&yylloc, conf, "Error adding ConnectPeer information"); YYERROR; } );
-					
+				int ret = fd_peer_add ( &fddpi_reload, conf->cnf_file, NULL, NULL );
+				if (ret != 0 && ret != EEXIST) {
+					yyerror (&yylloc, conf, "Error adding ConnectPeer information"); YYERROR;
+				}
+
 				/* Now destroy any content in the structure */
 				free(fddpi_reload.pi_diamid);
 				free(fddpi_reload.config.pic_realm);
