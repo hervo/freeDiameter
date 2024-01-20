@@ -348,6 +348,13 @@ struct peer_hdr {
 extern struct fd_list fd_g_peers;
 extern pthread_rwlock_t fd_g_peers_rw; /* protect the list */
 
+int fd_peer_remove_zombies();
+
+void fd_peer_terminate ( struct peer_hdr* peer );
+
+typedef void (peer_action_func) (struct peer_hdr *, void *);
+int fd_peer_for_each ( peer_action_func * action, void * private_data );
+
 /*
  * FUNCTION:	fd_peer_add
  *
