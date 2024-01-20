@@ -476,6 +476,20 @@ static time_t file_has_changed_since(time_t last_reload, const char* filename)
 	return statbuf.st_mtim.tv_sec;
 }
 
+void terminate_peer_from_old_config (struct peer_hdr * peer, void *)
+{
+	if (peer->info.config.pic_flags.persist == PI_PRST_ALWAYS){
+		peer->info.config.pic_flags.persist = PI_PRST_NONE;
+		fd_peer_terminate(peer);
+	}
+}
+
+static void terminate_old_peers()
+{
+	fd_peer_for_each ( terminate_peer_from_old_config, NULL );
+	fd_peer_remove_zombies();
+}
+
 static void * poll_config_file(void * arg)
 {
 	const char* reload_conf_file = (const char*)arg;
@@ -496,6 +510,7 @@ static void * poll_config_file(void * arg)
 			continue;
 		last_reload = ret;
 		fprintf(stderr, "Reloading conf from %s\n", reload_conf_file);
+		terminate_old_peers(last_reload);
 		fd_conf_reload(reload_conf);
 		sleep(1);
 	}
