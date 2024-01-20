@@ -45,7 +45,7 @@
 %debug 
 %error-verbose
 
-%parse-param {struct fd_config * conf}
+%parse-param {struct fd_config * conf} {time_t* config_update_time}
 
 /* Keep track of location */
 %locations 
@@ -61,7 +61,7 @@ int fddlex(YYSTYPE *lvalp, YYLTYPE *llocp);
 #define fdd_reloadlex fddlex
 
 /* Function to report error */
-void fdd_reloaderror (YYLTYPE *ploc, struct fd_config * conf, char const *s)
+void fdd_reloaderror (YYLTYPE *ploc, struct fd_config * conf, time_t* config_update_time, char const *s)
 {
 	if (ploc->first_line != ploc->last_line) {
 		TRACE_ERROR("%s:%d.%d-%d.%d : %s", conf->cnf_file, ploc->first_line, ploc->first_column, ploc->last_line, ploc->last_column, s);
@@ -145,7 +145,7 @@ conffile:		/* Empty is OK -- for simplicity here, we reject in daemon later */
 			| conffile connpeer
 			| conffile errors
 			{
-				yyerror(&yylloc, conf, "An error occurred while parsing the configuration file");
+				yyerror(&yylloc, conf, config_update_time, "An error occurred while parsing the configuration file");
 				return EINVAL;
 			}
 			;
@@ -163,9 +163,10 @@ connpeer:	{
 			CONNPEER '=' QSTRING peerinfo ';'
 			{
 				fddpi_reload.pi_diamid = $4;
+				fddpi_reload.time_added = *config_update_time;
 				int ret = fd_peer_add ( &fddpi_reload, conf->cnf_file, NULL, NULL );
 				if (ret != 0 && ret != EEXIST) {
-					yyerror (&yylloc, conf, "Error adding ConnectPeer information"); YYERROR;
+					yyerror (&yylloc, conf, config_update_time, "Error adding ConnectPeer information"); YYERROR;
 				}
 
 				/* Now destroy any content in the structure */
@@ -193,7 +194,7 @@ peerparams:		/* empty */
 			| peerparams NOIP ';'
 			{
 				if ((conf->cnf_flags.no_ip6) || (fddpi_reload.config.pic_flags.pro3 == PI_P3_IP)) { 
-					yyerror (&yylloc, conf, "No_IP conflicts with a No_IPv6 directive.");
+					yyerror (&yylloc, conf, config_update_time, "No_IP conflicts with a No_IPv6 directive.");
 					YYERROR;
 				}
 				got_peer_noip_reload++;
@@ -202,7 +203,7 @@ peerparams:		/* empty */
 			| peerparams NOIP6 ';'
 			{
 				if ((conf->cnf_flags.no_ip4) || (fddpi_reload.config.pic_flags.pro3 == PI_P3_IPv6)) { 
-					yyerror (&yylloc, conf, "No_IPv6 conflicts with a No_IP directive.");
+					yyerror (&yylloc, conf, config_update_time, "No_IPv6 conflicts with a No_IP directive.");
 					YYERROR;
 				}
 				got_peer_noipv6_reload++;
@@ -211,11 +212,11 @@ peerparams:		/* empty */
 			| peerparams NOTCP ';'
 			{
 				#ifdef DISABLE_SCTP
-					yyerror (&yylloc, conf, "No_TCP cannot be specified in daemon compiled with DISABLE_SCTP option.");
+					yyerror (&yylloc, conf, config_update_time, "No_TCP cannot be specified in daemon compiled with DISABLE_SCTP option.");
 					YYERROR;
 				#endif
 				if ((conf->cnf_flags.no_sctp) || (fddpi_reload.config.pic_flags.pro4 == PI_P4_TCP)) { 
-					yyerror (&yylloc, conf, "No_TCP conflicts with a No_SCTP directive.");
+					yyerror (&yylloc, conf, config_update_time, "No_TCP conflicts with a No_SCTP directive.");
 					YYERROR;
 				}
 				got_peer_notcp_reload++;
@@ -224,7 +225,7 @@ peerparams:		/* empty */
 			| peerparams NOSCTP ';'
 			{
 				if ((conf->cnf_flags.no_tcp) || (fddpi_reload.config.pic_flags.pro4 == PI_P4_SCTP)) { 
-					yyerror (&yylloc, conf, "No_SCTP conflicts with a No_TCP directive.");
+					yyerror (&yylloc, conf, config_update_time, "No_SCTP conflicts with a No_TCP directive.");
 					YYERROR;
 				}
 				got_peer_nosctp_reload++;
@@ -253,7 +254,7 @@ peerparams:		/* empty */
 			| peerparams PORT '=' INTEGER ';'
 			{
 				CHECK_PARAMS_DO( ($4 > 0) && ($4 < 1<<16),
-					{ yyerror (&yylloc, conf, "Invalid port value"); YYERROR; } );
+					{ yyerror (&yylloc, conf, config_update_time, "Invalid port value"); YYERROR; } );
 				fddpi_reload.config.pic_port = (uint16_t)$4;
 			}
 			| peerparams TCTIMER '=' INTEGER ';'
@@ -283,7 +284,7 @@ peerparams:		/* empty */
 					hints.ai_flags &= ~ AI_NUMERICHOST;
 					ret = getaddrinfo($4, NULL, &hints, &ai);
 				}
-				if (ret) { yyerror (&yylloc, conf, gai_strerror(ret)); YYERROR; }
+				if (ret) { yyerror (&yylloc, conf, config_update_time, gai_strerror(ret)); YYERROR; }
 				
 				CHECK_FCT_DO( fd_ep_add_merge( &fddpi_reload.pi_endpoints, ai->ai_addr, ai->ai_addrlen, EP_FL_CONF | (disc ?: EP_ACCEPTALL) ), YYERROR );
 				free($4);
@@ -304,7 +305,7 @@ peerparams:		/* empty */
 					hints.ai_flags &= ~ AI_NUMERICHOST;
 					ret = getaddrinfo($4, NULL, &hints, &ai);
 				}
-				if (ret) { yyerror (&yylloc, conf, gai_strerror(ret)); YYERROR; }
+				if (ret) { yyerror (&yylloc, conf, config_update_time, gai_strerror(ret)); YYERROR; }
 				
 				CHECK_FCT_DO( fd_ep_add_merge( &fddpi_reload.cer_host_ip_whitelist, ai->ai_addr, ai->ai_addrlen, EP_FL_CONF | (disc ?: EP_ACCEPTALL) ), YYERROR );
 				free($4);

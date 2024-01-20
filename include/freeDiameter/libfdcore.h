@@ -190,6 +190,8 @@ extern struct fd_config *fd_g_config; /* The pointer to access the global config
 
 int fd_conf_init_instance(struct fd_config * conf);
 
+int fd_conf_reload(struct fd_config * conf, time_t config_update_time);
+
 
 /*============================================================*/
 /*                         PEERS                              */
@@ -330,6 +332,7 @@ struct peer_info {
 	
 	struct fd_list	pi_endpoints;	/* Endpoint(s) of the remote peer (configured, discovered, or advertized). list of struct fd_endpoint. DNS resolved if empty. */
 	struct fd_list cer_host_ip_whitelist;	/* only include Host-IP-Address AVPs that have the following endpoints in CER */
+	time_t time_added;       /* Peer addition time - seconds since epoch */
 };
 
 

@@ -110,6 +110,9 @@ int fd_peer_add ( struct peer_info * info, const char * orig_dbg, void (*cb)(str
 	/* Create a structure to contain the new peer information */
 	CHECK_FCT( fd_peer_alloc(&p) );
 	
+	/* Copy time added */
+	p->p_hdr.info.time_added = info->time_added;
+
 	/* Copy the informations from the parameters received */
 	p->p_hdr.info.pi_diamid = info->pi_diamid;
 	CHECK_FCT( fd_os_validate_DiameterIdentity(&p->p_hdr.info.pi_diamid, &p->p_hdr.info.pi_diamidlen, 1) );

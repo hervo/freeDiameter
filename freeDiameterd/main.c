@@ -496,7 +496,7 @@ static void * poll_config_file(void * arg)
 			continue;
 		last_reload = ret;
 		fprintf(stderr, "Reloading conf from %s\n", reload_conf_file);
-		fd_conf_reload(reload_conf);
+		fd_conf_reload(reload_conf, last_reload);
 		sleep(1);
 	}
 	return NULL;

@@ -255,7 +255,7 @@ static int fd_conf_print_details_func (gnutls_x509_crt_t cert,
 GCC_DIAG_OFF("-Wdeprecated-declarations")
 #endif /* !GNUTLS_VERSION_300 */
 
-int fd_conf_reload(struct fd_config * conf)
+int fd_conf_reload(struct fd_config * conf, time_t config_update_time)
 {
 	extern FILE * fddin;
 	const char * orig = NULL;
@@ -283,7 +283,7 @@ int fd_conf_reload(struct fd_config * conf)
 
 	/* call yacc parser */
 	TRACE_DEBUG (FULL, "Parsing configuration file: %s", conf->cnf_file);
-	CHECK_FCT(  fdd_reloadparse(conf)  );
+	CHECK_FCT(  fdd_reloadparse(conf, &config_update_time)  );
 
 	/* close the file */
 	fclose(fddin);
