@@ -47,7 +47,6 @@ pthread_rwlock_t fd_g_activ_peers_rw = PTHREAD_RWLOCK_INITIALIZER;
 static struct fd_list validators = FD_LIST_INITIALIZER(validators);	/* list items are simple fd_list with "o" pointing to the callback */
 static pthread_rwlock_t validators_rw = PTHREAD_RWLOCK_INITIALIZER;
 
-
 /* Alloc / reinit a peer structure. if *ptr is not NULL, it must already point to a valid struct fd_peer. */
 int fd_peer_alloc(struct fd_peer ** ptr)
 {
@@ -87,6 +86,25 @@ int fd_peer_alloc(struct fd_peer ** ptr)
 	
 	fd_list_init(&p->p_connparams, p);
 	
+	return 0;
+}
+
+void fd_peer_terminate ( struct peer_hdr* peer )
+{
+	fd_event_send(((struct fd_peer *)peer)->p_events, FDEVP_TERMINATE, 0, NULL);
+}
+
+int fd_peer_for_each ( peer_action_func * action, void * private_data )
+{
+	CHECK_POSIX( pthread_rwlock_wrlock(&fd_g_peers_rw) );
+
+	struct fd_list * li;
+	for (li = fd_g_peers.next; li != &fd_g_peers; li = li->next) {
+		struct peer_hdr * next = (struct peer_hdr *)li;
+		action(next, private_data);
+	}
+
+	CHECK_POSIX( pthread_rwlock_unlock(&fd_g_peers_rw) );
 	return 0;
 }
 
@@ -369,35 +387,13 @@ int fd_peer_free(struct fd_peer ** ptr)
 	return 0;
 }
 
-/* Terminate peer module (destroy all peers, first gently, then violently) */
-int fd_peer_fini()
+int fd_peer_remove_zombies()
 {
-	struct fd_list * li;
-	struct fd_list purge = FD_LIST_INITIALIZER(purge); /* Store zombie peers here */
-	int list_empty;
-	struct timespec	wait_until, now;
-	
-	TRACE_ENTRY();
-	
-	CHECK_FCT_DO(fd_p_expi_fini(), /* continue */);
-	
-	TRACE_DEBUG(INFO, "Sending terminate signal to all peer connections");
-	
-	CHECK_FCT_DO( pthread_rwlock_wrlock(&fd_g_peers_rw), /* continue */ );
-	for (li = fd_g_peers.next; li != &fd_g_peers; li = li->next) {
-		struct fd_peer * peer = (struct fd_peer *)li->o;
-		
-		if (fd_peer_getstate(peer) != STATE_ZOMBIE) {
-			CHECK_FCT_DO( fd_psm_terminate(peer, "REBOOTING"), /* continue */ );
-		} else {
-			li = li->prev; /* to avoid breaking the loop */
-			fd_list_unlink(&peer->p_hdr.chain);
-			fd_list_insert_before(&purge, &peer->p_hdr.chain);
-		}
-	}
-	list_empty = FD_IS_LIST_EMPTY(&fd_g_peers);
-	CHECK_FCT_DO( pthread_rwlock_unlock(&fd_g_peers_rw), /* continue */ );
-	
+	CHECK_FCT_DO( pthread_rwlock_wrlock(&fd_g_peers_rw), );
+	int list_empty = FD_IS_LIST_EMPTY(&fd_g_peers);
+	CHECK_FCT_DO( pthread_rwlock_unlock(&fd_g_peers_rw), );
+
+	struct timespec wait_until, now;
 	if (!list_empty) {
 		CHECK_SYS(  clock_gettime(CLOCK_REALTIME, &now)  );
 		fd_psm_start(); /* just in case */
@@ -405,14 +401,15 @@ int fd_peer_fini()
 		wait_until.tv_sec  = now.tv_sec + DPR_TIMEOUT + 1;
 		wait_until.tv_nsec = now.tv_nsec;
 	}
-	
+
+	struct fd_list purge = FD_LIST_INITIALIZER(purge); /* Store zombie peers here */
 	while ((!list_empty) && (TS_IS_INFERIOR(&now, &wait_until))) {
-		
 		/* Allow the PSM(s) to execute */
 		usleep(100000);
-		
+
 		/* Remove zombie peers */
 		CHECK_FCT_DO( pthread_rwlock_wrlock(&fd_g_peers_rw), /* continue */ );
+		struct fd_list * li;
 		for (li = fd_g_peers.next; li != &fd_g_peers; li = li->next) {
 			struct fd_peer * peer = (struct fd_peer *)li->o;
 			if (fd_peer_getstate(peer) == STATE_ZOMBIE) {
@@ -425,7 +422,45 @@ int fd_peer_fini()
 		CHECK_FCT_DO( pthread_rwlock_unlock(&fd_g_peers_rw), /* continue */ );
 		CHECK_SYS(  clock_gettime(CLOCK_REALTIME, &now)  );
 	}
-	
+
+	/* Free memory objects of all peers */
+	while (!FD_IS_LIST_EMPTY(&purge)) {
+		struct fd_peer * peer = (struct fd_peer *)(purge.next->o);
+		fd_list_unlink(&peer->p_hdr.chain);
+		fd_peer_free(&peer);
+	}
+
+	return 0;
+}
+
+/* Terminate peer module (destroy all peers, first gently, then violently) */
+int fd_peer_fini()
+{
+	struct fd_list * li;
+
+	TRACE_ENTRY();
+
+	CHECK_FCT_DO(fd_p_expi_fini(), /* continue */);
+
+	TRACE_DEBUG(INFO, "Sending terminate signal to all peer connections");
+
+	CHECK_FCT_DO( pthread_rwlock_wrlock(&fd_g_peers_rw), /* continue */ );
+	for (li = fd_g_peers.next; li != &fd_g_peers; li = li->next) {
+		struct fd_peer * peer = (struct fd_peer *)li->o;
+
+		if (fd_peer_getstate(peer) != STATE_ZOMBIE) {
+			CHECK_FCT_DO( fd_psm_terminate(peer, "REBOOTING"), /* continue */ );
+		}
+	}
+	CHECK_FCT_DO( pthread_rwlock_unlock(&fd_g_peers_rw), /* continue */ );
+
+	fd_peer_remove_zombies();
+
+	CHECK_FCT_DO( pthread_rwlock_wrlock(&fd_g_peers_rw), );
+	int list_empty = FD_IS_LIST_EMPTY(&fd_g_peers);
+	CHECK_FCT_DO( pthread_rwlock_unlock(&fd_g_peers_rw), );
+
+	struct fd_list purge = FD_LIST_INITIALIZER(purge); /* Store zombie peers here */
 	if (!list_empty) {
 		TRACE_DEBUG(INFO, "Forcing connections shutdown");
 		CHECK_FCT_DO( pthread_rwlock_wrlock(&fd_g_peers_rw), /* continue */ );
@@ -437,14 +472,14 @@ int fd_peer_fini()
 		}
 		CHECK_FCT_DO( pthread_rwlock_unlock(&fd_g_peers_rw), /* continue */ );
 	}
-	
+
 	/* Free memory objects of all peers */
 	while (!FD_IS_LIST_EMPTY(&purge)) {
 		struct fd_peer * peer = (struct fd_peer *)(purge.next->o);
 		fd_list_unlink(&peer->p_hdr.chain);
 		fd_peer_free(&peer);
 	}
-	
+
 	/* Now empty the validators list */
 	CHECK_FCT_DO( pthread_rwlock_wrlock(&validators_rw), /* continue */ );
 	while (!FD_IS_LIST_EMPTY( &validators )) {
